@@ -1,5 +1,6 @@
 package mobappdev.example.nback_cimpl.ui.viewmodels
 
+import android.speech.tts.TextToSpeech
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -43,7 +44,7 @@ interface GameViewModel {
     fun setGameType(gameType: GameType)
     fun startGame()
 
-    fun checkMatch()
+    fun checkMatch(): Boolean
 }
 
 class GameVM(
@@ -69,6 +70,9 @@ class GameVM(
 
     private val nBackHelper = NBackHelper()  // Helper that generate the event array
     private var events = emptyArray<Int>()  // Array with all events
+    private var eventsPos = -1
+
+
 
     override fun setGameType(gameType: GameType) {
         // update the gametype in the gamestate
@@ -83,33 +87,54 @@ class GameVM(
         Log.d("GameVM", "The following sequence was generated: ${events.contentToString()}")
 
         job = viewModelScope.launch {
+
             when (gameState.value.gameType) {
                 GameType.Audio -> runAudioGame()
                 GameType.AudioVisual -> runAudioVisualGame()
                 GameType.Visual -> runVisualGame(events)
             }
-            // Todo: update the highscore
+            if (_score.value > _highscore.value)
+                userPreferencesRepository.saveHighScore(_score.value)
         }
     }
 
-    override fun checkMatch() {
-        /**
-         * Todo: This function should check if there is a match when the user presses a match button
-         * Make sure the user can only register a match once for each event.
-         */
+    override fun checkMatch(): Boolean {
+            if (eventsPos > nBack) {
+                if (events[eventsPos] == events[eventsPos - nBack]) {
+                    _score.value++
+                    return true
+                }
+
+            }
+        return false
     }
-    private fun runAudioGame() {
+    private suspend fun runAudioGame() {
         // Todo: Make work for Basic grade
+
+        for (i in events.indices) {
+            eventsPos = i
+            _gameState.value = _gameState.value.copy(eventValue = events[i])
+            delay(eventInterval)
+        }
+
+        eventsPos = -1
     }
 
     private suspend fun runVisualGame(events: Array<Int>){
         // Todo: Replace this code for actual game code
-        for (value in events) {
-            _gameState.value = _gameState.value.copy(eventValue = value)
+
+        for (i in events.indices) {
+            eventsPos = i
+            _gameState.value = _gameState.value.copy(eventValue = events[i])
             delay(eventInterval)
         }
 
+        eventsPos = -1
+
+
     }
+
+
 
     private fun runAudioVisualGame(){
         // Todo: Make work for Higher grade
@@ -141,6 +166,18 @@ enum class GameType{
     AudioVisual
 }
 
+enum class NumberToLetter{
+    A,
+    B,
+    R,
+    T,
+    K,
+    O,
+    Y,
+    W,
+    F
+}
+
 data class GameState(
     // You can use this state to push values from the VM to your UI.
     val gameType: GameType = GameType.Visual,  // Type of the game
@@ -163,6 +200,7 @@ class FakeVM: GameViewModel{
     override fun startGame() {
     }
 
-    override fun checkMatch() {
+    override fun checkMatch(): Boolean {
+        return true
     }
 }

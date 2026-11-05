@@ -71,7 +71,12 @@ void fillInAMatch(int nBackString[], int size, int combinations, int nback){
     // Continue trying to find a valid position until one is found
     while(test == 0){
         // Generate a random position in the nBackString
+
         int possition = rand() % size;
+
+        while (possition < nback) {
+            possition = rand() % size;
+        }
 
         // Check if the current and n-back positions are within the bounds
         // and if both positions are currently empty

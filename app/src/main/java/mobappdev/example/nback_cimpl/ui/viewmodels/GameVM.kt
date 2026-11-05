@@ -1,5 +1,7 @@
 package mobappdev.example.nback_cimpl.ui.viewmodels
 
+import android.app.Application
+import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -17,6 +19,7 @@ import kotlinx.coroutines.launch
 import mobappdev.example.nback_cimpl.GameApplication
 import mobappdev.example.nback_cimpl.NBackHelper
 import mobappdev.example.nback_cimpl.data.UserPreferencesRepository
+import java.util.Locale
 
 /**
  * This is the GameViewModel.
@@ -48,8 +51,8 @@ interface GameViewModel {
 }
 
 class GameVM(
-    private val userPreferencesRepository: UserPreferencesRepository
-): GameViewModel, ViewModel() {
+    private val userPreferencesRepository: UserPreferencesRepository, context: Context
+): GameViewModel, ViewModel(), TextToSpeech.OnInitListener {
     private val _gameState = MutableStateFlow(GameState())
     override val gameState: StateFlow<GameState>
         get() = _gameState.asStateFlow()
@@ -71,8 +74,25 @@ class GameVM(
     private val nBackHelper = NBackHelper()  // Helper that generate the event array
     private var events = emptyArray<Int>()  // Array with all events
     private var eventsPos = -1
+    private var lastCheckedPos = -1
 
 
+    private var tts: TextToSpeech= TextToSpeech(context,this)
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            val result = tts.setLanguage(Locale.ENGLISH)
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e("TTS", "Language not Supported")
+            }
+        }
+    }
+
+    override fun onCleared() {
+        tts.stop()
+        tts.shutdown()
+        super.onCleared()
+    }
 
     override fun setGameType(gameType: GameType) {
         // update the gametype in the gamestate
@@ -81,7 +101,7 @@ class GameVM(
 
     override fun startGame() {
         job?.cancel()  // Cancel any existing game loop
-
+        eventsPos = -1
         // Get the events from our C-model (returns IntArray, so we need to convert to Array<Int>)
         events = nBackHelper.generateNBackString(10, 9, 30, nBack).toList().toTypedArray()  // Todo Higher Grade: currently the size etc. are hardcoded, make these based on user input
         Log.d("GameVM", "The following sequence was generated: ${events.contentToString()}")
@@ -89,48 +109,53 @@ class GameVM(
         job = viewModelScope.launch {
 
             when (gameState.value.gameType) {
-                GameType.Audio -> runAudioGame()
+                GameType.Audio -> runAudioGame(events)
                 GameType.AudioVisual -> runAudioVisualGame()
                 GameType.Visual -> runVisualGame(events)
             }
             if (_score.value > _highscore.value)
                 userPreferencesRepository.saveHighScore(_score.value)
+            _score.value = 0
+            lastCheckedPos = -1
         }
     }
 
     override fun checkMatch(): Boolean {
-            if (eventsPos > nBack) {
-                if (events[eventsPos] == events[eventsPos - nBack]) {
-                    _score.value++
-                    return true
-                }
-
+            if (eventsPos <= nBack) {
+                return false
             }
+            if (eventsPos == lastCheckedPos) {
+                return false
+            }
+            if (events[eventsPos] == events[eventsPos - nBack]) {
+                lastCheckedPos = eventsPos
+                _score.value++
+                return true
+            }
+
+
         return false
     }
-    private suspend fun runAudioGame() {
-        // Todo: Make work for Basic grade
+    private suspend fun runAudioGame(events: Array<Int>) {
+
 
         for (i in events.indices) {
             eventsPos = i
-            _gameState.value = _gameState.value.copy(eventValue = events[i])
+            _gameState.value = _gameState.value.copy(eventValue = events[i], currentEvent = i + 1)
+            tts.speak(NumberToLetter.values()[events[eventsPos]].toString(), TextToSpeech.QUEUE_FLUSH, null, null)
             delay(eventInterval)
         }
 
-        eventsPos = -1
     }
 
     private suspend fun runVisualGame(events: Array<Int>){
-        // Todo: Replace this code for actual game code
+
 
         for (i in events.indices) {
             eventsPos = i
-            _gameState.value = _gameState.value.copy(eventValue = events[i])
+            _gameState.value = _gameState.value.copy(eventValue = events[i], currentEvent = i + 1)
             delay(eventInterval)
         }
-
-        eventsPos = -1
-
 
     }
 
@@ -144,7 +169,7 @@ class GameVM(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[APPLICATION_KEY] as GameApplication)
-                GameVM(application.userPreferencesRespository)
+                GameVM(application.userPreferencesRespository, application.applicationContext)
             }
         }
     }
@@ -181,7 +206,8 @@ enum class NumberToLetter{
 data class GameState(
     // You can use this state to push values from the VM to your UI.
     val gameType: GameType = GameType.Visual,  // Type of the game
-    val eventValue: Int = -1  // The value of the array string
+    val eventValue: Int = 5,  // The value of the array string
+    val currentEvent: Int = 0
 )
 
 class FakeVM: GameViewModel{

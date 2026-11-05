@@ -74,6 +74,7 @@ fun HomeScreen(
                 text = "High-Score = $highscore",
                 style = MaterialTheme.typography.headlineLarge
             )
+            Text(text = "n = 2\nevent duration is 2 sec\n10 events per round")
 
             Box(
                 modifier = Modifier.weight(1f),
@@ -96,6 +97,10 @@ fun HomeScreen(
                 modifier = Modifier.padding(16.dp),
                 text = "Choose game type".uppercase(),
                 style = MaterialTheme.typography.displaySmall
+            )
+            Text(
+                modifier = Modifier.padding(4.dp),
+                text = "Current Gametype: " + gameState.gameType.toString()
             )
             Row(
                 modifier = Modifier

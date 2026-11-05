@@ -1,6 +1,7 @@
 package mobappdev.example.nback_cimpl
 
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +17,7 @@ import mobappdev.example.nback_cimpl.ui.screens.GameScreen
 import mobappdev.example.nback_cimpl.ui.screens.HomeScreen
 import mobappdev.example.nback_cimpl.ui.theme.NBack_CImplTheme
 import mobappdev.example.nback_cimpl.ui.viewmodels.GameVM
+import java.util.Locale
 
 /**
  * This is the MainActivity of the application
@@ -32,10 +34,19 @@ import mobappdev.example.nback_cimpl.ui.viewmodels.GameVM
 
 
 class MainActivity : ComponentActivity() {
+
+
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             NBack_CImplTheme {
+
+
+
+
+
                 // A surface container using the 'background' color from the theme
                 val gameViewModel: GameVM = viewModel(
                     factory = GameVM.Factory
@@ -50,6 +61,8 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+
 
 
 }
